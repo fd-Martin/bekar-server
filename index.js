@@ -43,6 +43,16 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
+    const verifyAdmin = async (req,res) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== 'admin') {
+        return res.status(403).send({ error: true, message: 'forbidden message' });
+      }
+      next();
+    }
+
     // Get the database and collection on which to run the operation
     const usersCollection = client.db("BistroDB").collection("users");
     const menuCollection = client.db("BistroDB").collection("menu");
@@ -55,14 +65,18 @@ async function run() {
       res.send({ token })
     })
 
+
+
+
+
     //users related apis
 
-    app.get('/users', async (req, res) => {
+    app.get('/users', verifyJWT,verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result)
     })
 
-    
+
     app.get('/users/admin/:email', verifyJWT, async (req, res) => {
 
       const email = req.params.email;
