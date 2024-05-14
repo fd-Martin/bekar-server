@@ -43,7 +43,7 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    const verifyAdmin = async (req,res) => {
+    const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
       const query = { email: email };
       const user = await usersCollection.findOne(query);
@@ -65,13 +65,9 @@ async function run() {
       res.send({ token })
     })
 
-
-
-
-
     //users related apis
 
-    app.get('/users', verifyJWT,verifyAdmin, async (req, res) => {
+    app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result)
     })
@@ -120,6 +116,11 @@ async function run() {
       res.send(result);
     })
 
+    app.post('/menu', async (req, res) => {
+      const newItem = req.body;
+      const result = await menuCollection.insertOne(newItem);
+      res.send(result);
+    })
     //review related apis 
 
     app.get('/reviews', async (req, res) => {
@@ -131,25 +132,17 @@ async function run() {
     // cart collection apis
 
     app.get('/carts', verifyJWT, async (req, res) => {
-
       const email = req.query.email;
-
       if (!email) {
         res.send([]);
       }
-
       const decodedEmail = req.decoded.email;
-
       if (email !== decodedEmail) {
         return res.status(403).send({ error: true, message: 'forbidden access' })
       }
-
       const query = { email: email };
-
       const result = await cartCollection.find(query).toArray();
-
       res.send(result);
-
     });
 
     app.post('/carts', async (req, res) => {
