@@ -4,7 +4,7 @@ const cors = require('cors');
 require('dotenv').config()
 const port = process.env.PORT || 5000;
 const jwt = require('jsonwebtoken');
-const stripe=require('stripe')(process.env.PAYMENT_SECRET_KEY);
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY);
 
 // middleware
 app.use(cors());
@@ -59,6 +59,7 @@ async function run() {
     const menuCollection = client.db("BistroDB").collection("menu");
     const reviewCollection = client.db("BistroDB").collection("reviews");
     const cartCollection = client.db("BistroDB").collection("carts");
+    const paymentCollection = client.db("BistroDB").collection("payments");
 
     app.post('/jwt', (req, res) => {
       const user = req.body;
@@ -169,21 +170,34 @@ async function run() {
     })
 
 
-    //payment
-    app.post("/create-payment-intent",verifyJWT, async (req, res) => {
-      const {price}=req.body;
-      const amount =price*100;
-      console.log(price,amount);
+    //payment intent
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const { price } = req.body;
+      const amount = price * 100;
+
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: "usd",
-        payment_method_types:['card']
+        payment_method_types: ['card']
       });
       res.send({
         clientSecret: paymentIntent.client_secret,
       });
     })
+
+
+    // payment related api
+    app.post('/payments', async (req, res) => {
+      const payment = req.body;
+      const insertResult = await paymentCollection.insertOne(payment);
+      const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } }
+          const deleteResult = await cartCollection.deleteMany(query);
+      res.send({ insertResult, deleteResult })
+    })
+
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
