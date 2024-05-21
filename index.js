@@ -4,7 +4,7 @@ const cors = require('cors');
 require('dotenv').config()
 const port = process.env.PORT || 5000;
 const jwt = require('jsonwebtoken');
-const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY);
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY); //payment
 
 // middleware
 app.use(cors());
@@ -170,7 +170,10 @@ async function run() {
     })
 
 
-    //payment intent
+    // payment section start
+
+    // create payment intent
+
     app.post("/create-payment-intent", verifyJWT, async (req, res) => {
       const { price } = req.body;
       const amount = price * 100;
@@ -186,18 +189,29 @@ async function run() {
       });
     })
 
-
     // payment related api
+
     app.post('/payments', async (req, res) => {
       const payment = req.body;
       const insertResult = await paymentCollection.insertOne(payment);
       const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } }
-          const deleteResult = await cartCollection.deleteMany(query);
+      const deleteResult = await cartCollection.deleteMany(query);
       res.send({ insertResult, deleteResult })
     })
 
+    // payment section end
 
+    app.get('/admin-stats',verifyJWT,verifyAdmin,async(req,res)=>{
+      const users=await usersCollection.estimatedDocumentCount();
+      const products=await menuCollection.estimatedDocumentCount();
+      const order=await paymentCollection.estimatedDocumentCount();
+      const payments=await paymentCollection.find().toArray();
+      const revenue =payments.reduce((sum,payment)=>sum +payment.price,0);
 
+      res.send({
+        users,products,order,revenue
+      })
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
